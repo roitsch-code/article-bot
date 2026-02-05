@@ -113,23 +113,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
     print("Bot running!")
-    
-    # Simpler polling ohne die problematischen Parameter
-    import asyncio
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    async def run():
-        async with app:
-            await app.initialize()
-            await app.start()
-            await app.updater.start_polling()
-            await asyncio.Event().wait()
-    
-    try:
-        loop.run_until_complete(run())
-    except KeyboardInterrupt:
-        pass
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main()
