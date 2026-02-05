@@ -2,9 +2,7 @@
 import os
 import re
 import tempfile
-import asyncio
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from google.cloud import texttospeech
 import requests
 from bs4 import BeautifulSoup
@@ -70,50 +68,51 @@ def make_audio(text):
     except:
         return None
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎧 Schick mir eine URL!")
+def start(update, context):
+    update.message.reply_text("🎧 Schick mir eine URL!")
 
-async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def handle(update, context):
     url = update.message.text.strip()
     if not url.startswith('http'):
-        await update.message.reply_text("❌ Keine gültige URL")
+        update.message.reply_text("❌ Keine gültige URL")
         return
     
-    msg = await update.message.reply_text("⏳ Lade...")
+    msg = update.message.reply_text("⏳ Lade...")
     text = extract_article(url)
     
     if not text:
-        await msg.edit_text("❌ Kein Text gefunden")
+        msg.edit_text("❌ Kein Text gefunden")
         return
     
     words = len(text.split())
-    await msg.edit_text(f"✅ {words} Wörter\n🎤 Generiere Audio...")
+    msg.edit_text(f"✅ {words} Wörter\n🎤 Generiere Audio...")
     
     audio = make_audio(text)
     if not audio:
-        await msg.edit_text("❌ Audio-Fehler")
+        msg.edit_text("❌ Audio-Fehler")
         return
     
-    await msg.edit_text("⬆️ Sende...")
+    msg.edit_text("⬆️ Sende...")
     
     with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as f:
         f.write(audio)
         path = f.name
     
     try:
-        with open(path, 'rb') as f:
-            await update.message.reply_audio(audio=f, title="Article")
-        await msg.delete()
+        update.message.reply_audio(audio=open(path, 'rb'), title="Article")
+        msg.delete()
     finally:
         os.unlink(path)
 
 def main():
     print("Starting bot...")
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
+    updater = Updater(TELEGRAM_TOKEN, use_context=True)
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle))
     print("Bot running!")
-    app.run_polling(drop_pending_updates=True)
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == '__main__':
     main()
