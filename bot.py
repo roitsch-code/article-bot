@@ -2,7 +2,7 @@
 import os
 import re
 import tempfile
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from google.cloud import texttospeech
 import requests
 from bs4 import BeautifulSoup
@@ -24,7 +24,8 @@ def extract_article(url):
             text = '\n\n'.join([p.get_text().strip() for p in soup.find_all('p') if len(p.get_text().strip()) > 50])
         text = re.sub(r'\n\s*\n', '\n\n', text).strip()
         return text if len(text) > 100 else None
-    except:
+    except Exception as e:
+        print(f"Extract error: {e}")
         return None
 
 def split_chunks(text, max_bytes=4500):
@@ -65,13 +66,14 @@ def make_audio(text):
             )
             audio += resp.audio_content
         return audio
-    except:
+    except Exception as e:
+        print(f"TTS error: {e}")
         return None
 
 def start(update, context):
     update.message.reply_text("🎧 Schick mir eine URL!")
 
-def handle(update, context):
+def handle_message(update, context):
     url = update.message.text.strip()
     if not url.startswith('http'):
         update.message.reply_text("❌ Keine gültige URL")
@@ -99,17 +101,20 @@ def handle(update, context):
         path = f.name
     
     try:
-        update.message.reply_audio(audio=open(path, 'rb'), title="Article")
+        with open(path, 'rb') as audio_file:
+            update.message.reply_audio(audio=audio_file, title="Article")
         msg.delete()
     finally:
         os.unlink(path)
 
 def main():
     print("Starting bot...")
-    updater = Updater(TELEGRAM_TOKEN, use_context=True)
+    updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
     dp = updater.dispatcher
+    
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(filters.text & ~filters.command, handle))
+    dp.add_handler(MessageHandler(Filters.text & (~Filters.command), handle_message))
+    
     print("Bot running!")
     updater.start_polling()
     updater.idle()
