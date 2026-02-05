@@ -2,7 +2,7 @@
 import os
 import re
 import tempfile
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters
 from google.cloud import texttospeech
 import requests
 from bs4 import BeautifulSoup
@@ -109,7 +109,7 @@ def main():
     updater = Updater(TELEGRAM_TOKEN, use_context=True)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle))
+    dp.add_handler(MessageHandler(filters.text & ~filters.command, handle))
     print("Bot running!")
     updater.start_polling()
     updater.idle()
